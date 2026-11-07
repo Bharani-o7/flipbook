@@ -1,0 +1,39 @@
+# Publishes the Flipbook reader to GitHub Pages on every push to main.
+# Nothing to run locally: push, and a minute later the live site has your changes.
+name: Deploy Flipbook to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege: read the repo, write a Pages deployment, nothing else.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A newer push supersedes one still deploying, rather than racing it.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      # Only the reader is published. FlipbookApp is the native shell and
+      # has no business being served as a web page.
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: Flipbook
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
