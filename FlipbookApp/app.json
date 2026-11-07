@@ -8,7 +8,7 @@
     "scheme": "flipbook",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#f6f4ef",
-    "primaryColor": "#c2562f",
+    "primaryColor": "#693e6f",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.flipbook.reader",
@@ -22,7 +22,7 @@
         "android.permission.INTERNET"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#c2562f",
+        "backgroundColor": "#693e6f",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
