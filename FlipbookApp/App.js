@@ -143,7 +143,7 @@ export default function App() {
             />
             {loading && (
               <View style={[styles.loading, { backgroundColor: bg }]} pointerEvents="none">
-                <ActivityIndicator size="large" color="#c2562f" />
+                <ActivityIndicator size="large" color="#693e6f" />
                 <Text style={[styles.body, styles.loadingText, dark && styles.bodyDark]}>Opening {APP_NAME}…</Text>
               </View>
             )}
@@ -161,8 +161,8 @@ const styles = StyleSheet.create({
   titleDark: { color: '#e9e6e1' },
   body: { fontSize: 15, lineHeight: 22, color: '#6f6a63', textAlign: 'center' },
   bodyDark: { color: '#9a958e' },
-  code: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: '#c2562f' },
-  btn: { marginTop: 8, backgroundColor: '#c2562f', paddingVertical: 12, paddingHorizontal: 26, borderRadius: 999 },
+  code: { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: '#693e6f' },
+  btn: { marginTop: 8, backgroundColor: '#693e6f', paddingVertical: 12, paddingHorizontal: 26, borderRadius: 999 },
   btnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
   loading: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: 14 },
   loadingText: { marginTop: 4 }
