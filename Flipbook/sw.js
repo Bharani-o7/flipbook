@@ -1,6 +1,6 @@
 // Flipbook service worker: makes the app load offline after the first visit.
 // Bump VERSION whenever you change any file so users get the update.
-const VERSION = 'flipbook-v15';
+const VERSION = 'flipbook-v16';
 const APP_FILES = [
   './',
   'index.html',
@@ -24,7 +24,13 @@ const APP_FILES = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(APP_FILES)).then(() => self.skipWaiting()));
+  // cache:'reload' matters. A bare addAll() reads through the browser's own HTTP cache, and
+  // GitHub Pages serves these files with a ten-minute max-age — so a worker installing shortly
+  // after a deploy precaches the OLD files under the NEW version name, and bumping VERSION
+  // silently ships nothing. Forcing a network read makes a bump mean what it says.
+  e.waitUntil(caches.open(VERSION)
+    .then(c => c.addAll(APP_FILES.map(u => new Request(u, { cache: 'reload' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
