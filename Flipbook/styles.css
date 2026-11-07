@@ -6,13 +6,13 @@
 @font-face{font-family:'Fraunces';src:url(fonts/fraunces-latin-opsz-italic.woff2) format('woff2');font-weight:100 900;font-style:italic;font-display:swap}
 :root{
   --bg:#f6f4ef;--fg:#1c1b1a;--muted:#6f6a63;--panel:#fffdf9;--line:rgba(0,0,0,.09);
-  --accent:#c2562f;--accent-fg:#fff;--stage:#e7e2d8;--mark:rgba(255,200,70,.5);
+  --accent:#693e6f;--accent-bright:#7d4a84;--accent-fg:#fff;--stage:#e7e2d8;--mark:rgba(255,200,70,.5);
   --shadow:0 12px 32px rgba(40,25,10,.18),0 2px 6px rgba(40,25,10,.12);
   --sans:'Inter',system-ui,-apple-system,sans-serif;--display:'Fraunces',Georgia,serif;
   --read:'Literata',Georgia,serif;--fs:19px;--tb:56px;--bb:56px;
 }
-[data-theme=sepia]{--bg:#f3e9d7;--fg:#3b2f22;--muted:#6a5843;--panel:#fbf4e6;--line:rgba(60,40,20,.12);--stage:#e6d8bf;--accent:#a8502a}
-[data-theme=dark]{--bg:#151517;--fg:#e9e6e1;--muted:#9a958e;--panel:#1f1f23;--line:rgba(255,255,255,.09);--stage:#0e0e10;--accent:#ec8a60;--accent-fg:#1a1010;--mark:rgba(236,138,96,.35);--shadow:0 12px 32px rgba(0,0,0,.55)}
+[data-theme=sepia]{--bg:#f3e9d7;--fg:#3b2f22;--muted:#6a5843;--panel:#fbf4e6;--line:rgba(60,40,20,.12);--stage:#e6d8bf;--accent:#5f3865;--accent-bright:#6f4275}
+[data-theme=dark]{--bg:#151517;--fg:#e9e6e1;--muted:#9a958e;--panel:#1f1f23;--line:rgba(255,255,255,.09);--stage:#0e0e10;--accent:#bf95c6;--accent-bright:#bf95c6;--accent-fg:#231528;--mark:rgba(240,192,90,.3);--shadow:0 12px 32px rgba(0,0,0,.55)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:var(--sans)}
 body{overscroll-behavior:none}
@@ -45,7 +45,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 .bk .nm{margin-top:12px;font-weight:600;font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .bk .pg{color:var(--muted);font-size:12px;margin-top:3px}
 .bk .pbar{height:3px;background:var(--line);border-radius:2px;margin-top:7px;overflow:hidden}
-.bk .pbar i{display:block;height:100%;background:var(--accent)}
+.bk .pbar i{display:block;height:100%;background:var(--accent-bright)}
 .bk .x{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;font-size:17px;opacity:0;transition:opacity .15s}
 .bk:hover .x{opacity:1}
 @media (hover:none){.bk .x{opacity:.85}}
@@ -61,7 +61,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 .ttl{flex:1;min-width:0;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px}
 body.immersive .bar.top{transform:translateY(-100%);opacity:0;pointer-events:none}
 body.immersive .bar.bottom{transform:translateY(100%);opacity:0;pointer-events:none}
-#xprog{position:absolute;left:0;bottom:-1px;height:2px;width:0;background:var(--accent);transition:width .3s,opacity .6s}
+#xprog{position:absolute;left:0;bottom:-1px;height:2px;width:0;background:var(--accent-bright);transition:width .3s,opacity .6s}
 #slider{flex:1;min-width:60px;accent-color:var(--accent)}
 #pgLabel{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);min-width:64px;text-align:center}
 .wide{display:none}
@@ -175,7 +175,7 @@ body.immersive .bar.bottom{transform:translateY(100%);opacity:0;pointer-events:n
 .msg.err p:last-child{color:#c2362b}
 [data-theme=dark] .msg.err p:last-child{color:#ff8a7a}
 .msg .note{color:var(--muted);font-size:13px;font-style:italic}
-.cite{display:inline-block;padding:0 6px;margin:0 1px;border-radius:6px;font-size:12.5px;font-weight:600;line-height:1.6;background:color-mix(in srgb,var(--accent) 15%,transparent);color:color-mix(in srgb,var(--accent) 68%,var(--fg));vertical-align:1px}
+.cite{display:inline-block;padding:0 6px;margin:0 1px;border-radius:6px;font-size:12.5px;font-weight:600;line-height:1.6;background:color-mix(in srgb,var(--accent) 15%,transparent);color:color-mix(in srgb,var(--accent) 68%,var(--fg));vertical-align:1px;text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px}
 .cite:hover{background:color-mix(in srgb,var(--accent) 25%,transparent)}
 .typing{display:inline-flex;gap:4px;padding:4px 0}
 .typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
