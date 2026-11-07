@@ -28,6 +28,9 @@
     d.phone = !d.ipad && (/iPhone|iPod/.test(ua) || (/Android/.test(ua) && /Mobile/.test(ua)));
     d.tablet = d.ipad || (/Android/.test(ua) && !/Mobile/.test(ua));
     d.memory = navigator.deviceMemory || 0;
+    // Inside an app's web view (the Flipbook phone app, or any in-app browser) the OS gives the
+    // page far less memory than a real browser tab, and kills the process rather than swapping.
+    d.webview = /\bwv\b/.test(ua) || (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua));
     d.secure = window.isSecureContext && location.protocol !== 'file:';
     d.wasm = typeof WebAssembly === 'object';
     try {
@@ -35,8 +38,11 @@
     } catch (e) {}
     return (st.dev = d);
   }
-  // Without a usable GPU, only the small model is quick enough on the CPU.
-  const autoKey = d => !d.webgpu ? 'small' : (d.phone || d.tablet) ? 'medium' : (d.memory && d.memory < 8) ? 'medium' : 'large';
+  // Without a usable GPU, only the small model is quick enough on the CPU. Phones and web views
+  // get the small one whatever the GPU reports: a 1 GB model is past what iOS lets a web view's
+  // process hold, and the OS kills the process instead of swapping, which blanks the page.
+  const autoKey = d => (!d.webgpu || d.phone || d.webview) ? 'small'
+    : d.tablet ? 'medium' : (d.memory && d.memory < 8) ? 'medium' : 'large';
   const allowedKey = (k, d) => (!d.webgpu && k === 'large') ? 'medium' : k;
 
   async function isCached(id) {

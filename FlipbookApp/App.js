@@ -125,6 +125,11 @@ export default function App() {
               onLoadEnd={() => setLoading(false)}
               onError={() => { setLoading(false); setFailed(true); }}
               onHttpError={e => { if (e.nativeEvent.statusCode >= 500) { setLoading(false); setFailed(true); } }}
+              // The OS kills the web view's process when the device runs short of memory, which
+              // the AI model can trigger on a phone. Without these the view stays blank for good,
+              // because a reload inside a dead process does nothing. Remounting rebuilds it.
+              onContentProcessDidTerminate={() => { setLoading(true); setKey(k => k + 1); }}
+              onRenderProcessGone={() => { setLoading(true); setKey(k => k + 1); }}
               // storage + files: the reader keeps books, notes and AI models on the device
               javaScriptEnabled
               domStorageEnabled
