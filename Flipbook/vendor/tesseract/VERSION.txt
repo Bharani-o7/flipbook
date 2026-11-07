@@ -1,0 +1,1 @@
+Tesseract.js 7.0.0 (Apache-2.0) + tesseract-core (Apache-2.0). English data (eng.traineddata.gz) bundled so OCR of scanned pages works offline. Other languages can be added as <lang>.traineddata.gz files here.

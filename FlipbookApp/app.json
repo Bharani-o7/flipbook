@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Flipbook",
+    "slug": "flipbook",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "scheme": "flipbook",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#f6f4ef",
+    "primaryColor": "#c2562f",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.flipbook.reader",
+      "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": true
+      }
+    },
+    "android": {
+      "package": "com.flipbook.reader",
+      "permissions": [
+        "android.permission.INTERNET"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#c2562f",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#f6f4ef",
+          "dark": {
+            "backgroundColor": "#151517"
+          }
+        }
+      ]
+    ]
+  }
+}

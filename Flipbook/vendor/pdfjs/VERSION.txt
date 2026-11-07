@@ -1,0 +1,1 @@
+PDF.js 6.5.438 legacy build (Mozilla, Apache-2.0). pdf.min.js and pdf.worker.classic.min.js are classic-script bundles of the official legacy build (made with esbuild) so the app also works from file://.

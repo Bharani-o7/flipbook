@@ -1,0 +1,1 @@
+pdf-lib 1.17.1 (MIT), tree-shaken bundle. Loaded only when opening a non-PDF file (image, text) to wrap it into a PDF so it flows through the same reader and OCR pipeline.

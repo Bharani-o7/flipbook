@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Turn any PDF into an interactive ebook: page flip, reflowable text, highlights, notes, search and read-aloud. Runs in the browser on iPhone, iPad, Mac, Windows and Android.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Flipbook">
+<meta name="theme-color" content="#f6f4ef">
+<title>Flipbook — PDF to interactive ebook</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+<!-- PDF.js 6.5 (Mozilla, Apache-2.0) is bundled locally in vendor/ so the app works offline -->
+<script defer src="vendor/pdfjs/pdf.min.js"></script>
+<script defer src="ai-engine.js"></script>
+<script defer src="ocr-engine.js"></script>
+</head>
+<body>
+
+<!-- ===================== HOME / LIBRARY ===================== -->
+<main id="home">
+  <h1 class="brand">Flip<em>book</em></h1>
+  <p class="lede">Turn any PDF into an interactive ebook: flip through pages, switch to resizable text, highlight, take notes, search, and have it read aloud.</p>
+
+  <label class="drop" id="drop">
+    <input type="file" id="fileInput" accept="application/pdf,.pdf,image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff,.heic,.txt,.md,.markdown,.csv,.log" hidden>
+    <strong>Drop a PDF, image or text file here</strong>
+    <small>or</small>
+    <span class="cta">Choose a file</span>
+  </label>
+  <div class="hint" id="installHint" hidden></div>
+  <div class="hint"><button class="btn" id="installBtn" hidden>Install Flipbook as an app</button></div>
+
+  <div id="libSec" hidden>
+    <h2 class="sec">Your library</h2>
+    <div id="library"></div>
+  </div>
+
+  <div class="feat">
+    <div><b>Page flip</b>Swipe, tap the edges, or use the arrow keys.</div>
+    <div><b>Text mode</b>Turns the PDF into text that fits your screen, with adjustable size.</div>
+    <div><b>Highlights &amp; notes</b>Select text to highlight it, and add a note to any page.</div>
+    <div><b>Read aloud</b>Listens along with you and turns the pages automatically.</div>
+    <div><b>Ask AI about the book</b>Ask questions and get answers taken only from your book, with page numbers you can tap.</div>
+    <div><b>Search &amp; contents</b>Find any word, or jump using the chapters or page thumbnails.</div>
+    <div><b>Saved on this device</b>Books, your place, and your notes stay on this device. Nothing gets uploaded.</div>
+  </div>
+</main>
+
+<!-- ===================== READER ===================== -->
+<main id="reader" hidden aria-label="Book reader">
+  <div id="stage">
+    <div id="pageView" role="region" aria-label="Book page. Swipe or use arrow keys to turn pages." aria-live="polite"></div>
+    <div id="textView" hidden role="region" aria-label="Book text" tabindex="0"><div class="tv" id="textInner"></div></div>
+  </div>
+
+  <header class="bar top">
+    <button class="ibtn" id="backBtn" data-icon="back" title="Library" aria-label="Back to library"></button>
+    <div class="ttl" id="ttl"></div>
+    <button class="ibtn wide" id="searchBtn" data-icon="search" title="Search" aria-label="Search"></button>
+    <button class="ibtn" id="aiBtn" data-icon="spark" title="Ask AI about this book (A)" aria-label="Ask AI about this book"></button>
+    <button class="ibtn" id="bmBtn" data-icon="bookmark" title="Bookmark page" aria-label="Bookmark page"></button>
+    <button class="ibtn" id="dispBtn" data-icon="sun" title="Display" aria-label="Display settings"></button>
+    <button class="ibtn" id="ttsBtn" data-icon="volume" title="Read aloud" aria-label="Read aloud"></button>
+    <button class="ibtn" id="modeBtn" title="Switch to text mode" aria-label="Switch reading mode"></button>
+    <div id="xprog"></div>
+  </header>
+
+  <footer class="bar bottom">
+    <button class="ibtn" id="tocBtn" data-icon="list" title="Contents, pages, notes, search" aria-label="Contents"></button>
+    <button class="ibtn" id="prevBtn" data-icon="left" title="Previous page" aria-label="Previous page"></button>
+    <input type="range" id="slider" min="1" max="1" value="1" aria-label="Page">
+    <span id="pgLabel">1 / 1</span>
+    <button class="ibtn" id="nextBtn" data-icon="right" title="Next page" aria-label="Next page"></button>
+    <button class="ibtn" id="noteBtn" data-icon="pen" title="Note for this page" aria-label="Page note"></button>
+  </footer>
+
+  <div id="ttsBar" hidden>
+    <span class="dot"></span><span id="ttsLbl">Reading</span>
+    <select id="ttsRate" aria-label="Speed">
+      <option value="0.75">0.75×</option><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+    </select>
+    <button class="ibtn" id="ttsPlay" aria-label="Pause"></button>
+    <button class="ibtn" id="ttsStop" data-icon="x" aria-label="Stop reading"></button>
+  </div>
+
+  <div id="selMenu" hidden>
+    <button id="hlBtn">Highlight</button>
+    <button id="hlNoteBtn">Note</button>
+    <button id="askSelBtn">Ask AI</button>
+    <button id="readHereBtn" aria-label="Read aloud from here">Read</button>
+  </div>
+</main>
+
+<div id="scrim"></div>
+<aside id="panel" aria-label="Book navigation">
+  <div class="grab"></div>
+  <div class="tabs">
+    <button class="tab" data-tab="ai">Ask AI</button>
+    <button class="tab" data-tab="toc">Contents</button>
+    <button class="tab" data-tab="pages">Pages</button>
+    <button class="tab" data-tab="marks">Notes</button>
+    <button class="tab" data-tab="search">Search</button>
+    <button class="ibtn" id="panelClose" data-icon="x" aria-label="Close"></button>
+  </div>
+  <div id="pbody"></div>
+</aside>
+
+<div id="pop" hidden>
+  <div class="lbl">Theme</div>
+  <div class="seg" id="themeSeg">
+    <button data-v="light"><span class="sw" style="background:#f6f4ef"></span>Light</button>
+    <button data-v="sepia"><span class="sw" style="background:#f3e9d7"></span>Sepia</button>
+    <button data-v="dark"><span class="sw" style="background:#151517"></span>Dark</button>
+  </div>
+  <div class="lbl">Text size (text mode)</div>
+  <div class="seg"><button id="fsDown">A−</button><button id="fsVal" disabled>19</button><button id="fsUp">A+</button></div>
+  <div class="lbl">Font (text mode)</div>
+  <div class="seg" id="fontSeg"><button data-v="serif">Serif</button><button data-v="sans">Sans</button></div>
+</div>
+
+<div id="modal" hidden></div>
+<div id="loading" hidden><div class="spin"></div><div id="loadMsg">Loading…</div></div>
+<div id="toast" role="status"></div>
+
+<script defer src="app.js"></script>
+</body>
+</html>
