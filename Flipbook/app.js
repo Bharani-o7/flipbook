@@ -1310,7 +1310,11 @@ function aiEngineCard() {
     <p>Ask a question and Flipbook finds the passages that answer it, quoted with the page numbers. Nothing to download, it works offline, and it can't stray from the book.</p>
     <p class="small">${ios
       ? 'iPhones and iPads run out of memory while starting the downloadable AI, so this is the dependable way to ask here.'
-      : 'The downloadable AI needs an https address, which this page doesn\'t have.'}</p>
+      : st.state === 'none'
+        ? (st.why === 'file'
+          ? 'The downloadable AI needs this page opened from a web address rather than as a file.'
+          : 'This browser can\'t run the downloadable AI.')
+        : 'You picked quoting over the downloadable AI. Switch back whenever you like.'}</p>
     ${st.state === 'none' ? '' : '<div class="chips"><button class="btn" data-ai-force>Try the downloadable AI anyway</button></div>'}</div>`;
   }
   if (st.state === 'none') return st.why === 'file'
@@ -1499,7 +1503,12 @@ function aiQuoteAnswer(question, ctx) {
   return best;
 }
 
-const aiQuoteText = hits => hits.map(h => `“${h.s}” [p. ${h.page}]`).join('\n\n');
+// A heading often ends up glued to the sentence after it, because extracted text loses the
+// line break. Quoting "Chapter Two Bond prices move inversely…" looks like a mistake, so the
+// label comes off the front.
+const aiTrimLabel = s => s.replace(
+  /^(chapter|section|part|appendix)\s+(\d{1,3}|[ivxlc]{1,6}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b[\s.:—–-]*/i, '');
+const aiQuoteText = hits => hits.map(h => `“${aiTrimLabel(h.s)}” [p. ${h.page}]`).join('\n\n');
 
 function aiRules(title, ctx) {
   const t = aiCleanTitle(title);

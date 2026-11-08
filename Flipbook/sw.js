@@ -1,6 +1,6 @@
 // Flipbook service worker: makes the app load offline after the first visit.
 // Bump VERSION whenever you change any file so users get the update.
-const VERSION = 'flipbook-v17';
+const VERSION = 'flipbook-v18';
 const APP_FILES = [
   './',
   'index.html',
