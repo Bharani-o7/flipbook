@@ -1355,14 +1355,22 @@ window.FlipbookAI.onChange(() => {
   if (window.FlipbookAI.st.state === 'ready' && AI.pending) { const q = AI.pending; AI.pending = null; askAI(q); }
 });
 async function chooseModel() {
-  const E = window.FlipbookAI, d = await E.detect(), cur = E.pref(), auto = E.autoKey();
+  const E = window.FlipbookAI, d = await E.detect(), auto = E.autoKey();
+  // Quoting sits alongside the models as a first-class choice. Working out on its own whether a
+  // device can run a model has proved unreliable, and a reader who has watched a download fail
+  // needs a way to say so that doesn't depend on Flipbook guessing right.
+  const cur = aiModePref() === 'quotes' ? 'quotes' : E.pref();
   const opt = (v, title, sub) => `<label class="opt"><input type="radio" name="model" value="${v}"${cur === v ? ' checked' : ''}><span><b>${title}</b><small>${sub}</small></span></label>`;
-  const r = await modal({ title: 'Choose the AI model', body: `<p class="mp">All models are free, from Hugging Face, and run on this device.</p><div class="opts">
+  const r = await modal({ title: 'How should Ask AI answer?', body: `<div class="opts">
+    ${opt('quotes', 'Quote from the book', 'No download. Finds the passages that answer your question and quotes them with page numbers. Works on every device, iPhone and iPad included.')}
     ${opt('auto', 'Automatic (recommended)', `Best fit for this device: ${esc(E.MODELS[auto] ? E.MODELS[auto].name : '—')}`)}
-    ${Object.entries(E.MODELS).map(([k, m]) => opt(k, `${m.label}: ${esc(m.name)}`, `${m.size} download${k === 'large' ? ' · needs a strong computer' : k === 'small' ? ' · best for phones' : ''}`)).join('')}
-    </div><p class="mp small"><button class="linkbtn" data-delete-models>Delete downloaded AI models</button> to free up space.</p>`,
-    buttons: [{ label: 'Cancel', value: null }, { label: 'Use this model', cls: 'pri', value: 'ok' }] });
-  if (r.value === 'ok' && r.fields.model) { await E.setPref(r.fields.model); renderAI(); }
+    ${Object.entries(E.MODELS).map(([k, m]) => opt(k, `${m.label}: ${esc(m.name)}`, `${m.size} download${k === 'large' ? ' · needs a strong computer' : k === 'small' ? ' · smallest model' : ''}`)).join('')}
+    </div><p class="mp small">Models are free, from Hugging Face, and run on this device. iPhones and iPads often run out of memory while starting one — if a download keeps failing, pick quoting.<br><button class="linkbtn" data-delete-models>Delete downloaded AI models</button> to free up space.</p>`,
+    buttons: [{ label: 'Cancel', value: null }, { label: 'Use this', cls: 'pri', value: 'ok' }] });
+  if (r.value !== 'ok' || !r.fields.model) return;
+  if (r.fields.model === 'quotes') { aiSetModePref('quotes'); aiClearLoadStart(); }
+  else { aiSetModePref('model'); await E.setPref(r.fields.model); }
+  renderAI();
 }
 
 function renderAI() {
