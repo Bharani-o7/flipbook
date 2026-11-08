@@ -1333,7 +1333,7 @@ function aiEngineCard() {
     <div class="chips"><button class="btn pri" data-ai-start>Try again</button><button class="btn" data-ai-model>Choose a model</button></div></div>`;
   if (st.state === 'need-download') return `<div class="aicard" id="aiEngine"><b>Free AI that runs on your device</b>
     <p>No account, no limits, and your book never leaves this device. ${esc(m.name)} from Hugging Face is a one-time download (${esc(m.size)}); after that it works offline.</p>
-    <p class="small">Tip: use Wi-Fi for the download.${E.st.dev && !E.st.dev.webgpu ? ' This device has no supported graphics chip, so answers will be slower.' : ''}</p>
+    <p class="small">You can ask questions right now without it — answers come back as passages quoted from the book. The download adds answers written in its own words. Tip: use Wi-Fi.${E.st.dev && !E.st.dev.webgpu ? ' This device has no supported graphics chip, so answers will be slower.' : ''}</p>
     <div class="chips"><button class="btn pri" data-ai-start>Download &amp; start</button><button class="btn" data-ai-model>Choose a different model</button></div></div>`;
   return `<div class="aicard" id="aiEngine"><b>Checking what this device can run…</b></div>`;
 }
@@ -1368,7 +1368,7 @@ async function chooseModel() {
 function renderAI() {
   const b = $('#pbody'); const chat = S.book.chat || (S.book.chat = []);
   const E = window.FlipbookAI, ready = E.st.state === 'ready';
-  const canAsk = ready || aiQuoteMode();   // quoting needs no model, so the composer stays usable
+  const canAsk = true;   // quoting needs no model, so the composer is never disabled
   const intro = !ready ? aiEngineCard()
     : !chat.length
       ? `<div class="aicard"><b>Ask anything about “${esc(S.book.name)}”</b><p>Answers come from this book only, with page numbers you can tap.</p>
@@ -1573,9 +1573,10 @@ ${ctx.context.map(c => `[p. ${c.page}]\n${c.text}`).join('\n\n')}`;
 async function askAI(question) {
   question = String(question || '').trim();
   if (!question || AI.busy || !S.book) return;
-  await window.FlipbookAI.detect();
-  const quotes = aiQuoteMode();
-  if (!quotes && window.FlipbookAI.st.state !== 'ready') { AI.pending = question; openAI(); return; }
+  // A loaded model answers; otherwise the book's own sentences do. Asking never depends on
+  // working out what the device can run — getting that wrong should cost a better answer,
+  // never the ability to ask anything at all.
+  const quotes = window.FlipbookAI.st.state !== 'ready';
   const book = S.book, gen = S.gen;
   const chat = book.chat || (book.chat = []);
   const prevQ = [...chat].reverse().find(m => m.role === 'user');

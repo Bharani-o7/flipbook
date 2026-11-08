@@ -1,6 +1,6 @@
 // Flipbook service worker: makes the app load offline after the first visit.
 // Bump VERSION whenever you change any file so users get the update.
-const VERSION = 'flipbook-v20';
+const VERSION = 'flipbook-v22';
 const APP_FILES = [
   './',
   'index.html',
@@ -59,7 +59,20 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Everything else: cache first, then network
+  // The app's own code, network first. Serving it cache first meant a deploy could sit unseen
+  // behind a stale worker for as long as that worker lived, and bumping VERSION was the only
+  // way out — which failed quietly whenever the worker itself didn't update. Code is small;
+  // fetching it costs little and makes a deploy mean what it says. Offline still falls back.
+  if (/\.(html|js|css|webmanifest)$/.test(url.pathname) && !url.pathname.includes('/vendor/')) {
+    e.respondWith(fetch(req).then(res => {
+      if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
+      return res;
+    }).catch(() => caches.match(req)));
+    return;
+  }
+
+  // Everything else — vendored libraries, fonts, icons, model files — cache first. These are
+  // large and only change when their file name does.
   e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
     if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
     return res;
