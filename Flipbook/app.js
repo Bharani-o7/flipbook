@@ -276,12 +276,18 @@ async function openBook(book, buf) {
   S.cache.clear();
   book.highlights = book.highlights || []; book.notes = book.notes || {}; book.bookmarks = book.bookmarks || [];
   book.pages = S.n; book.opened = Date.now();
+  // Keep what the file records about itself. "Who wrote this?" cannot be answered by searching
+  // the text — a title page prints the name, it doesn't say "the author is…" — so it is
+  // answered from here instead.
+  try {
+    const info = ((await pdf.getMetadata()) || {}).info || {};
+    const clean = v => String(v || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+    book.meta = { author: clean(info.Author), title: clean(info.Title) };
+  } catch (e) { book.meta = book.meta || {}; }
   if (book.autoName) { // new book: prefer the title stored inside the PDF over a download-style file name
     book.autoName = false;
-    try {
-      const t = String(((await pdf.getMetadata()) || {}).info?.Title || '').replace(/\s+/g, ' ').trim();
-      if (t.length >= 2 && t.length <= 150 && !/^[\s(\[]*(untitled|anonymous|unknown|none|null|title|document\s*\d*|doc\d*|slide\s*\d*|presentation\d*|book\d*|new document|microsoft word.*|powerpoint.*|scan\w*\d*|img[_\d]*|print)[\s)\]]*$/i.test(t) && /[a-z]{2}/i.test(t) && !/\.(docx?|pdf|indd|tex)$/i.test(t)) book.name = t;
-    } catch (e) {}
+    const t = (book.meta && book.meta.title) || '';
+    if (t.length >= 2 && t.length <= 150 && !/^[\s(\[]*(untitled|anonymous|unknown|none|null|title|document\s*\d*|doc\d*|slide\s*\d*|presentation\d*|book\d*|new document|microsoft word.*|powerpoint.*|scan\w*\d*|img[_\d]*|print)[\s)\]]*$/i.test(t) && /[a-z]{2}/i.test(t) && !/\.(docx?|pdf|indd|tex)$/i.test(t)) book.name = t;
   }
   $('#ttl').textContent = book.name;
   $('#slider').max = S.n;
@@ -1510,6 +1516,25 @@ const aiTrimLabel = s => s.replace(
   /^(chapter|section|part|appendix)\s+(\d{1,3}|[ivxlc]{1,6}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b[\s.:—–-]*/i, '');
 const aiQuoteText = hits => hits.map(h => `“${aiTrimLabel(h.s)}” [p. ${h.page}]`).join('\n\n');
 
+// Questions about the book rather than its contents. Searching the text for these fails by
+// design, so they are answered from what the file records plus what the reader already knows.
+// "author" has to be the book's author, not a character described as one: "who wrote the
+// letter Alicia found" is a question about the text and must still be searched for.
+const META_RE = /\b(who\s+(wrote|is\s+the\s+author\s+of)\s+(this|it|the\s+(book|pdf|document))\b|who\s+wrote\s+(this|it)\b|who\s+is\s+the\s+author\s*[?.]?\s*$|author\s+of\s+(this|the)\s+(book|pdf|document)\b|what\s+is\s+(it|this|the\s+book)\s+called\b|title\s+of\s+(this|the)\s+(book|pdf|document)\b|how\s+many\s+pages\b|page\s+count\b|how\s+long\s+is\s+(it|this)\b)/i;
+
+function aiMetaAnswer(question, book, pageCount) {
+  if (!META_RE.test(question)) return null;
+  const m = book.meta || {}, out = [];
+  if (/\b(author|wrote|written\s+by)\b/i.test(question)) {
+    out.push(m.author
+      ? `The file records the author as ${m.author}.`
+      : `This file doesn't record an author. If the book has a title page it will be page 1 — the author's name is usually printed there.`);
+  }
+  if (/\b(called|title)\b/i.test(question)) out.push(`It's shown here as “${aiCleanTitle(book.name)}”.`);
+  if (/\b(pages?|how\s+long)\b/i.test(question)) out.push(`It has ${pageCount} ${pageCount === 1 ? 'page' : 'pages'}.`);
+  return out.length ? out.join(' ') : null;
+}
+
 function aiRules(title, ctx) {
   const t = aiCleanTitle(title);
   return `You are the reading assistant for the book "${t}". Answer using ONLY the book excerpts below.
@@ -1564,6 +1589,9 @@ async function askAI(question) {
     if (gen !== S.gen || ctrl.signal.aborted) { ans.note = 'Stopped.'; if (!ans.content) ans.content = '…'; return; }
     if (ctx.error) { ans.error = ctx.error; return; }
     aiStatus('');
+    // Both engines answer these the same way: from the file's own record, not from the text.
+    const meta = aiMetaAnswer(question, book, S.n);
+    if (meta) { ans.local = true; ans.content = meta; return; }
     if (quotes) {
       const hits = aiQuoteAnswer(question, ctx);
       ans.local = true;   // the book's words, not a model's: never fed back as chat history
