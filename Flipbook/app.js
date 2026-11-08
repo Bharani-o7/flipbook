@@ -1311,7 +1311,7 @@ function aiMsgHTML(m, i) {
 function aiEngineCard() {
   const E = window.FlipbookAI, st = E.st, m = E.current();
   if (aiQuoteMode()) {
-    const ios = st.dev && st.dev.ios;
+    const ios = IS_IOS;
     return `<div class="aicard" id="aiEngine"><b>Answers come from the book's own words</b>
     <p>Ask a question and Flipbook finds the passages that answer it, quoted with the page numbers. Nothing to download, it works offline, and it can't stray from the book.</p>
     <p class="small">${ios
@@ -1348,6 +1348,9 @@ function aiRefresh() {
   if (!AI.busy) renderAI();
 }
 window.FlipbookAI.onChange(() => {
+  // Reaching 'ready' is the only proof the model actually loaded on this device, so that is
+  // where the "a load was started" marker is cleared.
+  if (window.FlipbookAI.st.state === 'ready') aiClearLoadStart();
   aiRefresh();
   if (window.FlipbookAI.st.state === 'ready' && AI.pending) { const q = AI.pending; AI.pending = null; askAI(q); }
 });
@@ -1448,16 +1451,32 @@ const aiDropBadCites = (text, allowed) => text.replace(CITE_RE, (m, pre, a) => a
 // cannot wander off the book, because every word of the answer is the book's own.
 const aiModePref = () => { try { return localStorage.getItem('fb:aiMode') || 'auto'; } catch (e) { return 'auto'; } };
 const aiSetModePref = v => { try { localStorage.setItem('fb:aiMode', v); } catch (e) {} };
+// Worked out from the user agent, synchronously, so it is right on the first paint. The engine
+// reports the same thing, but only after an async detect() that has not resolved when the panel
+// first renders — reading it there silently offered iPhones a download that always fails.
+const IS_IOS = /iPhone|iPod|iPad/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   // iPadOS reports as a Mac
+
+// A load that never reached 'ready' means the page died while starting the model, which is what
+// running out of memory looks like from in here. A device that does that once is not asked to
+// try again — this catches the phones and old laptops no user-agent test would.
+const AI_TRY_KEY = 'fb:aiLoadStarted';
+const aiNoteLoadStart = () => { try { localStorage.setItem(AI_TRY_KEY, String(Date.now())); } catch (e) {} };
+const aiClearLoadStart = () => { try { localStorage.removeItem(AI_TRY_KEY); } catch (e) {} };
+const aiLoadDiedBefore = () => {
+  try { const t = +localStorage.getItem(AI_TRY_KEY); return !!t && Date.now() - t < 36e5; }
+  catch (e) { return false; }
+};
+
 function aiQuoteMode() {
   const E = window.FlipbookAI;
   if (E.st.state === 'ready') return false;          // a model is already loaded: use it
   const p = aiModePref();
   if (p === 'model') return false;
   if (p === 'quotes') return true;
-  const d = E.st.dev;
   // 'none' means no model can run here at all (opened as a file, or an old browser). Quoting
   // needs neither a secure origin nor WebAssembly, so those readers get answers too.
-  return E.st.state === 'none' || !!(d && d.ios);
+  return E.st.state === 'none' || IS_IOS || aiLoadDiedBefore();
 }
 
 const aiSentences = text => String(text)
@@ -1655,8 +1674,8 @@ pbody.addEventListener('input', e => {
 });
 pbody.addEventListener('click', async e => {
   const chip = e.target.closest('[data-q]'); if (chip) { askAI(chip.dataset.q); return; }
-  if (e.target.closest('[data-ai-start]')) { window.FlipbookAI.start(); return; }
-  if (e.target.closest('[data-ai-force]')) { aiSetModePref('model'); await window.FlipbookAI.prepare(); renderAI(); return; }
+  if (e.target.closest('[data-ai-start]')) { aiNoteLoadStart(); window.FlipbookAI.start(); return; }
+  if (e.target.closest('[data-ai-force]')) { aiSetModePref('model'); aiClearLoadStart(); await window.FlipbookAI.prepare(); renderAI(); return; }
   if (e.target.closest('[data-ai-model]')) { chooseModel(); return; }
   if (e.target.closest('[data-clear]')) {
     if (await confirmBox('Clear this chat?', 'This removes the questions and answers for this book.', 'Clear')) {
