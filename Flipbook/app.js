@@ -1304,8 +1304,17 @@ function aiMsgHTML(m, i) {
 }
 function aiEngineCard() {
   const E = window.FlipbookAI, st = E.st, m = E.current();
+  if (aiQuoteMode()) {
+    const ios = st.dev && st.dev.ios;
+    return `<div class="aicard" id="aiEngine"><b>Answers come from the book's own words</b>
+    <p>Ask a question and Flipbook finds the passages that answer it, quoted with the page numbers. Nothing to download, it works offline, and it can't stray from the book.</p>
+    <p class="small">${ios
+      ? 'iPhones and iPads run out of memory while starting the downloadable AI, so this is the dependable way to ask here.'
+      : 'The downloadable AI needs an https address, which this page doesn\'t have.'}</p>
+    ${st.state === 'none' ? '' : '<div class="chips"><button class="btn" data-ai-force>Try the downloadable AI anyway</button></div>'}</div>`;
+  }
   if (st.state === 'none') return st.why === 'file'
-    ? `<div class="aicard" id="aiEngine"><b>Open Flipbook from its web address to use the AI</b><p>The free AI can't start when the app is opened as a file. Use your GitHub Pages or Cloudflare Pages link, or run it on localhost.</p></div>`
+    ? `<div class="aicard" id="aiEngine"><b>Open Flipbook over https to use the AI</b><p>Browsers only grant the storage the free AI needs on a secure address. A plain http:// address, or a file opened from disk, won't do. Use your GitHub Pages or Cloudflare Pages link, or localhost.</p></div>`
     : `<div class="aicard" id="aiEngine"><b>This browser can't run the free AI</b><p>Please update your browser. Chrome, Edge, Firefox or Safari (version 26 or newer on iPhone and iPad) all work.</p></div>`;
   if (st.state === 'loading') return `<div class="aicard" id="aiEngine"><b>Getting ${esc(m ? m.name : 'the AI')} ready</b>
     <div class="aiprog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(st.progress * 100)}"><i style="width:${Math.round(st.progress * 100)}%"></i></div>
@@ -1346,6 +1355,7 @@ async function chooseModel() {
 function renderAI() {
   const b = $('#pbody'); const chat = S.book.chat || (S.book.chat = []);
   const E = window.FlipbookAI, ready = E.st.state === 'ready';
+  const canAsk = ready || aiQuoteMode();   // quoting needs no model, so the composer stays usable
   const intro = !ready ? aiEngineCard()
     : !chat.length
       ? `<div class="aicard"><b>Ask anything about “${esc(S.book.name)}”</b><p>Answers come from this book only, with page numbers you can tap.</p>
@@ -1353,8 +1363,8 @@ function renderAI() {
   b.innerHTML = `<div class="chat">
     <div class="msgs" id="aiMsgs" aria-live="polite">${intro}${chat.map(aiMsgHTML).join('')}<div class="aistatus" id="aiStatus"${AI.status ? '' : ' hidden'}>${esc(AI.status)}</div></div>
     <form class="askbar" id="aiForm">
-      <textarea id="aiQ" rows="1" maxlength="2000" placeholder="${ready ? 'Ask about this book…' : 'Start the AI first'}" enterkeyhint="send" aria-label="Your question"${ready ? '' : ' disabled'}></textarea>
-      <button class="send" id="aiSend" aria-label="${AI.busy ? 'Stop' : 'Send'}"${ready ? '' : ' disabled'}>${icon(AI.busy ? 'stop' : 'send')}</button>
+      <textarea id="aiQ" rows="1" maxlength="2000" placeholder="${canAsk ? 'Ask about this book…' : 'Start the AI first'}" enterkeyhint="send" aria-label="Your question"${canAsk ? '' : ' disabled'}></textarea>
+      <button class="send" id="aiSend" aria-label="${AI.busy ? 'Stop' : 'Send'}"${canAsk ? '' : ' disabled'}>${icon(AI.busy ? 'stop' : 'send')}</button>
     </form>
     <div class="aifoot">${E.current() ? `Free AI on this device: ${esc(E.current().name)} · <button data-ai-model>Change</button> · ` : ''}Answers come only from this book and can be wrong, so check the cited pages.${chat.length ? ' <button data-clear>Clear chat</button>' : ''}</div>
   </div>`;
@@ -1421,6 +1431,76 @@ const NOT_FOUND_RE = /(couldn'?t|could not|can'?t|cannot) find (that|this|it|the
 const aiCitesBook = (text, allowed) => [...text.matchAll(CITE_RE)].some(m => allowed.has(+m[2]));
 const aiDropBadCites = (text, allowed) => text.replace(CITE_RE, (m, pre, a) => allowed.has(+a) ? m : '').replace(/[ \t]+([.,;:!?])/g, '$1');
 
+// ---- Answering without a language model -------------------------------------------------
+// iPhones and iPads download a model fine and are then killed while starting it, so on those
+// devices Flipbook answers by finding the passages that match the question and quoting them
+// with their page numbers. Nothing to download, it works offline and on any device, and it
+// cannot wander off the book, because every word of the answer is the book's own.
+const aiModePref = () => { try { return localStorage.getItem('fb:aiMode') || 'auto'; } catch (e) { return 'auto'; } };
+const aiSetModePref = v => { try { localStorage.setItem('fb:aiMode', v); } catch (e) {} };
+function aiQuoteMode() {
+  const E = window.FlipbookAI;
+  if (E.st.state === 'ready') return false;          // a model is already loaded: use it
+  const p = aiModePref();
+  if (p === 'model') return false;
+  if (p === 'quotes') return true;
+  const d = E.st.dev;
+  // 'none' means no model can run here at all (opened as a file, or an old browser). Quoting
+  // needs neither a secure origin nor WebAssembly, so those readers get answers too.
+  return E.st.state === 'none' || !!(d && d.ios);
+}
+
+const aiSentences = text => String(text)
+  .split(/(?<=[.!?”"])\s+(?=[A-Z“"'(])|\n{2,}/)
+  .map(s => s.trim().replace(/\s+/g, ' '))
+  .filter(s => s.length >= 45 && s.length <= 400);
+
+function aiQuoteAnswer(question, ctx) {
+  const q = new Set(aiTerms(question));
+  const overview = OVERVIEW_RE.test(question);
+  const pages = ctx.context.filter(c => c.text && c.text.trim());
+  if (!pages.length) return null;
+
+  if (overview || !q.size) {
+    // "What is this book about" has no useful keywords: take the opening line of pages spread
+    // across the whole book instead, so the answer covers it rather than just the start.
+    const step = Math.max(1, Math.floor(pages.length / 5));
+    const out = [];
+    for (let i = 0; i < pages.length && out.length < 5; i += step) {
+      const s = aiSentences(pages[i].text)[0];
+      if (s) out.push({ s, page: pages[i].page });
+    }
+    return out.length ? out : null;
+  }
+
+  const scored = [];
+  for (const { page, text } of pages) {
+    for (const s of aiSentences(text)) {
+      const ts = aiTerms(s);
+      if (!ts.length) continue;
+      const matched = new Set(ts.filter(t => q.has(t)));
+      if (!matched.size) continue;
+      // reward covering more of the question, and gently prefer shorter, denser sentences
+      scored.push({ s, page, score: matched.size + matched.size / Math.sqrt(ts.length) });
+    }
+  }
+  if (!scored.length) return null;
+  scored.sort((a, b) => b.score - a.score || a.page - b.page);
+  const floor = scored[0].score * 0.55;   // three good lines beat four padded with near-misses
+  const best = [], seen = new Set();
+  for (const c of scored) {
+    if (c.score < floor) break;
+    const k = c.s.slice(0, 60).toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k); best.push(c);
+    if (best.length === 4) break;
+  }
+  best.sort((a, b) => a.page - b.page);
+  return best;
+}
+
+const aiQuoteText = hits => hits.map(h => `“${h.s}” [p. ${h.page}]`).join('\n\n');
+
 function aiRules(title, ctx) {
   const t = aiCleanTitle(title);
   return `You are the reading assistant for the book "${t}". Answer using ONLY the book excerpts below.
@@ -1440,7 +1520,9 @@ ${ctx.context.map(c => `[p. ${c.page}]\n${c.text}`).join('\n\n')}`;
 async function askAI(question) {
   question = String(question || '').trim();
   if (!question || AI.busy || !S.book) return;
-  if (window.FlipbookAI.st.state !== 'ready') { AI.pending = question; openAI(); return; }
+  await window.FlipbookAI.detect();
+  const quotes = aiQuoteMode();
+  if (!quotes && window.FlipbookAI.st.state !== 'ready') { AI.pending = question; openAI(); return; }
   const book = S.book, gen = S.gen;
   const chat = book.chat || (book.chat = []);
   const prevQ = [...chat].reverse().find(m => m.role === 'user');
@@ -1473,6 +1555,14 @@ async function askAI(question) {
     if (gen !== S.gen || ctrl.signal.aborted) { ans.note = 'Stopped.'; if (!ans.content) ans.content = '…'; return; }
     if (ctx.error) { ans.error = ctx.error; return; }
     aiStatus('');
+    if (quotes) {
+      const hits = aiQuoteAnswer(question, ctx);
+      ans.local = true;   // the book's words, not a model's: never fed back as chat history
+      ans.content = hits
+        ? `From the book:\n\n${aiQuoteText(hits)}`
+        : `I couldn't find that in “${aiCleanTitle(book.name)}”. Try different words, or name a chapter or page.`;
+      return;
+    }
     const messages = [{ role: 'system', content: aiRules(book.name, ctx) }, ...history, { role: 'user', content: question }];
     const allowed = new Set(ctx.context.map(c => c.page));
     for (const h of history) if (h.role === 'assistant') for (const m of h.content.matchAll(CITE_RE)) allowed.add(+m[2]); // pages already cited in this chat
@@ -1529,6 +1619,7 @@ pbody.addEventListener('input', e => {
 pbody.addEventListener('click', async e => {
   const chip = e.target.closest('[data-q]'); if (chip) { askAI(chip.dataset.q); return; }
   if (e.target.closest('[data-ai-start]')) { window.FlipbookAI.start(); return; }
+  if (e.target.closest('[data-ai-force]')) { aiSetModePref('model'); await window.FlipbookAI.prepare(); renderAI(); return; }
   if (e.target.closest('[data-ai-model]')) { chooseModel(); return; }
   if (e.target.closest('[data-clear]')) {
     if (await confirmBox('Clear this chat?', 'This removes the questions and answers for this book.', 'Clear')) {

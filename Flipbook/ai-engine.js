@@ -31,6 +31,10 @@
     // Inside an app's web view (the Flipbook phone app, or any in-app browser) the OS gives the
     // page far less memory than a real browser tab, and kills the process rather than swapping.
     d.webview = /\bwv\b/.test(ua) || (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua));
+    // iOS downloads a 0.6 GB model fine and is then killed while instantiating it — measured on
+    // an iPhone in both Safari and an app's web view: same step, every time. Treat it as unable
+    // to run one, and answer from the book's own sentences there instead.
+    d.ios = d.ipad || /iPhone|iPod/.test(ua);
     d.secure = window.isSecureContext && location.protocol !== 'file:';
     d.wasm = typeof WebAssembly === 'object';
     try {
