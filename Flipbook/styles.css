@@ -20,6 +20,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;paddin
 [hidden]{display:none!important}
 .icon{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;display:block}
 .ibtn{width:40px;height:40px;display:inline-grid;place-items:center;border-radius:10px;flex:none}
+/* A finger is not a cursor: 40px is comfortable under a mouse and a near-miss under a thumb.
+   Apple asks for 44pt, and a reader holding a phone one-handed for an hour feels the difference. */
+@media (pointer:coarse){.ibtn{width:44px;height:44px}}
 .ibtn:hover{background:var(--line)}
 .ibtn.on{color:var(--accent)}
 .ibtn.on .fillable{fill:currentColor}
