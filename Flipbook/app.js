@@ -1315,7 +1315,7 @@ function aiEngineCard() {
     return `<div class="aicard" id="aiEngine"><b>Answers come from the book's own words</b>
     <p>Ask a question and Flipbook finds the passages that answer it, quoted with the page numbers. Nothing to download, it works offline, and it can't stray from the book.</p>
     <p class="small">${ios
-      ? 'iPhones and iPads run out of memory while starting the downloadable AI, so this is the dependable way to ask here.'
+      ? 'iPhones and iPads run out of memory while starting the downloadable AI, so this is the dependable way to ask here. The smallest model is about 0.3 GB and worth a try if you want answers written in its own words — quoting stays here if it fails.'
       : st.state === 'none'
         ? (st.why === 'file'
           ? 'The downloadable AI needs this page opened from a web address rather than as a file.'
@@ -1364,7 +1364,7 @@ async function chooseModel() {
   const r = await modal({ title: 'How should Ask AI answer?', body: `<div class="opts">
     ${opt('quotes', 'Quote from the book', 'No download. Finds the passages that answer your question and quotes them with page numbers. Works on every device, iPhone and iPad included.')}
     ${opt('auto', 'Automatic (recommended)', `Best fit for this device: ${esc(E.MODELS[auto] ? E.MODELS[auto].name : '—')}`)}
-    ${Object.entries(E.MODELS).map(([k, m]) => opt(k, `${m.label}: ${esc(m.name)}`, `${m.size} download${k === 'large' ? ' · needs a strong computer' : k === 'small' ? ' · smallest model' : ''}`)).join('')}
+    ${Object.entries(E.MODELS).map(([k, m]) => opt(k, `${m.label}: ${esc(m.name)}`, `${m.size} download${k === 'large' ? ' · needs a strong computer' : k === 'tiny' ? ' · smallest model, the only one with a chance on an iPhone' : ''}`)).join('')}
     </div><p class="mp small">Models are free, from Hugging Face, and run on this device. iPhones and iPads often run out of memory while starting one — if a download keeps failing, pick quoting.<br><button class="linkbtn" data-delete-models>Delete downloaded AI models</button> to free up space.</p>`,
     buttons: [{ label: 'Cancel', value: null }, { label: 'Use this', cls: 'pri', value: 'ok' }] });
   if (r.value !== 'ok' || !r.fields.model) return;

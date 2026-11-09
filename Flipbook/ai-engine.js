@@ -5,6 +5,10 @@
   'use strict';
 
   const MODELS = {
+    // 273 MB over WebGPU (q4f16), 388 MB on the CPU (q4) — roughly half of Qwen3 0.6B, which is
+    // the only reason it is here: an iPhone is killed while instantiating 0.6 GB, so the smallest
+    // model that still writes real sentences is the one with a chance of surviving there.
+    tiny:   { name: 'SmolLM2 360M',       label: 'Tiny',     size: 'about 0.3 GB', id: 'HuggingFaceTB/SmolLM2-360M-Instruct' },
     small:  { name: 'Qwen3 0.6B',         label: 'Fast',     size: 'about 0.6 GB', id: 'onnx-community/Qwen3-0.6B-ONNX',    noThink: true },
     medium: { name: 'Gemma 3 1B',         label: 'Balanced', size: 'about 1 GB',   id: 'onnx-community/gemma-3-1b-it-ONNX' },
     large:  { name: 'Jan-nano 4B (Qwen3)', label: 'Smartest', size: 'about 2.8 GB', id: 'onnx-community/Jan-nano-ONNX',      noThink: true }
@@ -45,7 +49,10 @@
   // Without a usable GPU, only the small model is quick enough on the CPU. Phones and web views
   // get the small one whatever the GPU reports: a 1 GB model is past what iOS lets a web view's
   // process hold, and the OS kills the process instead of swapping, which blanks the page.
-  const autoKey = d => (!d.webgpu || d.phone || d.webview) ? 'small'
+  // iOS gets the tiny one: a reader there who asks for a model anyway should get the only size
+  // with a chance of starting, not the one measured to be killed.
+  const autoKey = d => d.ios ? 'tiny'
+    : (!d.webgpu || d.phone || d.webview) ? 'small'
     : d.tablet ? 'medium' : (d.memory && d.memory < 8) ? 'medium' : 'large';
   const allowedKey = (k, d) => (!d.webgpu && k === 'large') ? 'medium' : k;
 
